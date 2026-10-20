@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel & SQL Practice Portal — Data Analytics in Accounting</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>Excel & SQL Exam Practice Studio</h1>
+            <p>Data Analytics in Accounting — Official Course Exam Practice Portal</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Control Panel -->
+        <section class="controls-card">
+            <div class="filter-group">
+                <label for="mode-select"><strong>Mode:</strong></label>
+                <select id="mode-select">
+                    <option value="practice">Practice Mode (With Step-by-Step Explanations)</option>
+                    <option value="exam">Timed Mock Exam Simulator</option>
+                </select>
+            </div>
+
+            <div class="filter-group" id="module-filter-group">
+                <label for="category-filter"><strong>Topic Filter:</strong></label>
+                <select id="category-filter">
+                    <option value="all">All Excel & SQL Modules</option>
+                    <option value="excel-pwc">Excel Part 1: PwC & NYC Permits</option>
+                    <option value="excel-etl">Excel Part 2: ETL Cases 1-4</option>
+                    <option value="excel-integrateco">Excel Part 3: IntegrateCo Payroll</option>
+                    <option value="excel-regression">Excel Part 4: Restaurant Regression</option>
+                    <option value="sql-cs50">SQL Part 1: CS50 (Fiftyville Forensic Audit)</option>
+                    <option value="sql-pwc">SQL Part 2: Chinook DB & P-Card Audit</option>
+                </select>
+            </div>
+
+            <div class="score-badge">
+                Progress: <span id="completed-count">0</span> / <span id="total-count">0</span> Completed
+            </div>
+        </section>
+
+        <!-- Exam Timer Bar (Hidden in Practice Mode) -->
+        <div id="exam-timer-bar" class="timer-bar" style="display: none;">
+            <span>⏱️ <strong>Mock Exam Time Remaining:</strong> <span id="timer-display">45:00</span></span>
+            <button class="btn-primary" onclick="submitFullExam()">Submit Exam for Scoring</button>
+        </div>
+
+        <!-- Question Cards Container -->
+        <div id="question-container"></div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
