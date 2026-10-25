@@ -15,7 +15,7 @@
     </header>
 
     <main class="container">
-        <!-- Control Panel -->
+        <!-- Painel de Controlo -->
         <section class="controls-card">
             <div class="filter-group">
                 <label for="mode-select"><strong>Mode:</strong></label>
@@ -43,16 +43,17 @@
             </div>
         </section>
 
-        <!-- Exam Timer Bar (Hidden in Practice Mode) -->
+        <!-- Barra do Temporizador de Exame -->
         <div id="exam-timer-bar" class="timer-bar" style="display: none;">
             <span>⏱️ <strong>Mock Exam Time Remaining:</strong> <span id="timer-display">45:00</span></span>
             <button class="btn-primary" onclick="submitFullExam()">Submit Exam for Scoring</button>
         </div>
 
-        <!-- Question Cards Container -->
+        <!-- Contentor das Perguntas -->
         <div id="question-container"></div>
     </main>
 
-    <script src="script.js"></script>
+    <!-- Versão atualizada para limpar a cache do navegador -->
+    <script src="script.js?v=3"></script>
 </body>
 </html>
