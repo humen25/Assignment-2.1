@@ -135,14 +135,11 @@ const questionBank = [
     }
 ];
 
-// State Variables
+// Tracking State
 let userProgress = {};
-let userAnswers = {};
-let solutionVisibility = {};
-let contextModes = {};
 let currentMode = "practice";
 let examTimerInterval = null;
-let timeRemaining = 45 * 60; // 45 minutes in seconds
+let timeRemaining = 45 * 60;
 
 const container = document.getElementById('question-container');
 const categoryFilter = document.getElementById('category-filter');
@@ -152,30 +149,16 @@ const totalCountEl = document.getElementById('total-count');
 const timerBar = document.getElementById('exam-timer-bar');
 const timerDisplay = document.getElementById('timer-display');
 
-// Track text input changes in real time
-window.updateUserAnswer = function(id, value) {
-    userAnswers[id] = value;
-};
-
-// Render Questions
+// Render Questions DOM once per filter/mode change
 function renderQuestions() {
     const selectedCategory = categoryFilter.value;
     container.innerHTML = '';
     
     const filtered = questionBank.filter(q => selectedCategory === 'all' || q.category === selectedCategory);
     totalCountEl.innerText = filtered.length;
-    let completed = 0;
+    updateProgressCounter();
 
     filtered.forEach((q, idx) => {
-        if (userProgress[q.id]) completed++;
-
-        const currentAnswer = userAnswers[q.id] || '';
-        const isSolutionVisible = solutionVisibility[q.id] ? 'block' : 'none';
-        const currentModeState = contextModes[q.id] || 'context';
-        const isContext = currentModeState === 'context';
-        const promptText = isContext ? q.accountingContext : q.technicalPrompt;
-        const toggleBtnLabel = isContext ? "Switch to Technical Prompt" : "Switch to Accounting Context";
-
         const card = document.createElement('div');
         card.className = 'question-card';
         card.id = `card-${q.id}`;
@@ -183,27 +166,25 @@ function renderQuestions() {
         card.innerHTML = `
             <div class="card-header">
                 <span class="tag ${q.type}">${q.type.toUpperCase()}</span>
-                <button class="toggle-mode-btn" onclick="toggleContext(${q.id})">${toggleBtnLabel}</button>
+                <button class="toggle-mode-btn" id="btn-toggle-ctx-${q.id}" onclick="toggleContext(${q.id})">Switch to Technical Prompt</button>
             </div>
             <div class="question-title">${idx + 1}. ${q.title}</div>
-            <p class="question-text" id="text-${q.id}" data-mode="${currentModeState}" 
+            <p class="question-text" id="text-${q.id}" data-mode="context" 
                data-context="${q.accountingContext}" 
                data-tech="${q.technicalPrompt}">
-               ${promptText}
+               ${q.accountingContext}
             </p>
             
             <div class="interactive-area">
                 <label style="font-size: 0.85rem; color: #64748b; font-weight:600;">Your Working Formula / Query:</label>
-                <textarea id="input-${q.id}" 
-                          placeholder="Type your Excel formula or SQL query here..."
-                          oninput="updateUserAnswer(${q.id}, this.value)">${currentAnswer}</textarea>
+                <textarea id="input-${q.id}" placeholder="Type your Excel formula or SQL query here..."></textarea>
                 <div class="action-btns">
                     <button class="btn-primary" onclick="verifyAnswer(${q.id})">Validate Answer</button>
                     <button class="btn-secondary" onclick="toggleExplanation(${q.id})">Toggle Solution & Explanation</button>
                 </div>
             </div>
 
-            <div class="explanation-box" id="explanation-${q.id}" style="display: ${isSolutionVisible};">
+            <div class="explanation-box" id="explanation-${q.id}" style="display: none;">
                 <div class="explanation-section">
                     <h4>Official Excel / SQL Solution</h4>
                     <div class="solution-code">${q.solution}</div>
@@ -225,22 +206,37 @@ function renderQuestions() {
         `;
         container.appendChild(card);
     });
+}
 
+function updateProgressCounter() {
+    let completed = Object.keys(userProgress).length;
     completedCountEl.innerText = completed;
 }
 
-// Toggle between Accounting Context and Technical Prompt
+// Direct DOM manipulation - never destroys textarea content!
 window.toggleContext = function(id) {
-    const current = contextModes[id] || 'context';
-    contextModes[id] = (current === 'context') ? 'tech' : 'context';
-    renderQuestions();
+    const textEl = document.getElementById(`text-${id}`);
+    const btnEl = document.getElementById(`btn-toggle-ctx-${id}`);
+    if (!textEl || !btnEl) return;
+
+    if (textEl.getAttribute('data-mode') === 'context') {
+        textEl.innerText = textEl.getAttribute('data-tech');
+        textEl.setAttribute('data-mode', 'tech');
+        btnEl.innerText = "Switch to Accounting Context";
+    } else {
+        textEl.innerText = textEl.getAttribute('data-context');
+        textEl.setAttribute('data-mode', 'context');
+        btnEl.innerText = "Switch to Technical Prompt";
+    }
 };
 
-// Validate Answer Input
+// Validate Answer Input - direct DOM update!
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
-    const inputVal = inputEl ? inputEl.value : (userAnswers[id] || '');
-    userAnswers[id] = inputVal;
+    const expBox = document.getElementById(`explanation-${id}`);
+    
+    if (!inputEl) return;
+    const inputVal = inputEl.value;
 
     if (!inputVal.trim()) {
         alert("Please write your formula or query before validating.");
@@ -250,29 +246,30 @@ window.verifyAnswer = function(id) {
     const q = questionBank.find(item => item.id === id);
     const matched = q.keywords.some(kw => inputVal.toUpperCase().includes(kw.toUpperCase()));
     
-    // Reveal official solution box upon validation
-    solutionVisibility[id] = true;
+    // Automatically open explanation box on validation
+    if (expBox) expBox.style.display = 'block';
 
     if (matched) {
         userProgress[id] = true;
+        updateProgressCounter();
         alert("✅ Answer Validated! Core Excel/SQL syntax recognized.");
     } else {
         alert("⚠️ Check your syntax. Key expected terms (e.g. " + q.keywords.join(", ") + ") were missing.");
     }
-
-    renderQuestions();
 };
 
-// Toggle Solution Box Display
+// Toggle Solution Box Display - direct DOM update!
 window.toggleExplanation = function(id) {
-    solutionVisibility[id] = !solutionVisibility[id];
-    renderQuestions();
+    const expBox = document.getElementById(`explanation-${id}`);
+    if (expBox) {
+        expBox.style.display = (expBox.style.display === 'block') ? 'none' : 'block';
+    }
 };
 
 // Countdown Timer Logic
 function startExamTimer() {
     clearInterval(examTimerInterval);
-    timeRemaining = 45 * 60; // 45 minutes
+    timeRemaining = 45 * 60;
 
     examTimerInterval = setInterval(() => {
         timeRemaining--;
