@@ -18,7 +18,11 @@ const questionBank = [
             ],
             examTip: "XLOOKUP is preferred over VLOOKUP because it does not break when columns are reordered and defaults to exact matching."
         },
-        keywords: ["XLOOKUP", "VLOOKUP"]
+        // Strict Validation Requirement: Must contain function + lookup key + lookup range + return range
+        requiredTokensOptions: [
+            ["XLOOKUP", "A2", "A:A", "D:D"],
+            ["VLOOKUP", "A2", "4"]
+        ]
     },
     {
         id: 2,
@@ -36,7 +40,10 @@ const questionBank = [
             ],
             examTip: "If TEXTAFTER is unavailable in older Excel versions, use the LEN + FIND combination."
         },
-        keywords: ["TEXTAFTER", "RIGHT", "MID"]
+        requiredTokensOptions: [
+            ["TEXTAFTER", "A2", "_"],
+            ["RIGHT", "A2", "LEN", "FIND"]
+        ]
     },
     {
         id: 3,
@@ -55,7 +62,9 @@ const questionBank = [
             ],
             examTip: "In SUMIFS, the sum range comes FIRST (unlike SUMIF where the sum range comes last)."
         },
-        keywords: ["SUMIFS"]
+        requiredTokensOptions: [
+            ["SUMIFS", "E:E", "C:C", "401", "D:D", "CHICAGO"]
+        ]
     },
     {
         id: 4,
@@ -74,7 +83,11 @@ const questionBank = [
             ],
             examTip: "Always compare P-values to 0.05. If P-value < 0.05, reject the null hypothesis."
         },
-        keywords: ["SIGNIFICANT", "84%", "ADVERTISING"]
+        requiredTokensOptions: [
+            ["ADVERTISING", "SIGNIFICANT"],
+            ["ADVERTISING", "84"],
+            ["ADVERTISING", "0.84"]
+        ]
     },
     {
         id: 5,
@@ -93,7 +106,9 @@ const questionBank = [
             ],
             examTip: "Verify foreign keys match across tables: p.id = b.person_id and b.account_number = atm.account_number."
         },
-        keywords: ["SELECT", "FROM", "JOIN", "WHERE"]
+        requiredTokensOptions: [
+            ["SELECT", "FROM", "PEOPLE", "BANK_ACCOUNTS", "ATM_TRANSACTIONS", "LEGGETT STREET"]
+        ]
     },
     {
         id: 6,
@@ -112,7 +127,9 @@ const questionBank = [
             ],
             examTip: "Use WHERE to filter individual rows BEFORE grouping; use HAVING to filter aggregated results AFTER grouping."
         },
-        keywords: ["SELECT", "FROM", "GROUP BY", "HAVING"]
+        requiredTokensOptions: [
+            ["SELECT", "FROM", "INVOICE", "GROUP BY", "HAVING", "45"]
+        ]
     },
     {
         id: 7,
@@ -131,7 +148,9 @@ const questionBank = [
             ],
             examTip: "Always include all non-aggregated SELECT columns inside the GROUP BY clause."
         },
-        keywords: ["SELECT", "FROM", "GROUP BY", "HAVING"]
+        requiredTokensOptions: [
+            ["SELECT", "FROM", "PCARD_TRANSACTIONS", "GROUP BY", "HAVING", "2500"]
+        ]
     }
 ];
 
@@ -247,7 +266,7 @@ window.toggleContext = function(id) {
     }
 };
 
-// Strict Validation Function (Disallows empty parameters inside parentheses)
+// Strict Multi-Token Solution Validation
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
@@ -264,47 +283,37 @@ window.verifyAnswer = function(id) {
     const q = questionBank.find(item => item.id === id);
     const upperInput = rawVal.toUpperCase();
     let isValid = false;
-    let feedbackMsg = "";
+    let missingTokens = [];
 
-    if (q.type === "excel") {
-        if (q.category === "excel-regression") {
-            const hasKeywords = q.keywords.some(kw => upperInput.includes(kw));
-            if (hasKeywords && rawVal.length >= 10) {
-                isValid = true;
-            } else {
-                feedbackMsg = "⚠️ Please provide a complete interpretation referencing statistical significance or R-squared.";
-            }
-        } else {
-            const startsWithEquals = upperInput.startsWith("=");
-            const openIdx = rawVal.indexOf("(");
-            const closeIdx = rawVal.lastIndexOf(")");
-            const hasParens = openIdx !== -1 && closeIdx !== -1 && closeIdx > openIdx;
-            const insideParens = hasParens ? rawVal.substring(openIdx + 1, closeIdx).trim() : "";
-            const hasFunction = q.keywords.some(kw => upperInput.includes(kw));
-
-            if (!startsWithEquals) {
-                feedbackMsg = "⚠️ An Excel formula must start with '=' (e.g. =XLOOKUP(A2, ...)).";
-            } else if (!hasParens || insideParens.length === 0) {
-                feedbackMsg = "⚠️ Formula arguments cannot be empty inside '()'. You must provide parameters (e.g., cell references like A2).";
-            } else if (!hasFunction) {
-                feedbackMsg = `⚠️ Missing expected Excel function (e.g., ${q.keywords.join(" or ")}).`;
-            } else if (insideParens.length < 2) {
-                feedbackMsg = "⚠️ Incomplete formula arguments inside '()'. Provide valid cell references or parameters.";
-            } else {
-                isValid = true;
-            }
+    // Basic Syntax Structure Checks
+    if (q.type === "excel" && q.category !== "excel-regression") {
+        if (!upperInput.startsWith("=")) {
+            alert("⚠️ An Excel formula must start with '=' (e.g. =XLOOKUP(A2, ...)).");
+            delete userProgress[id];
+            localStorage.setItem('exam_progress', JSON.stringify(userProgress));
+            updateProgressCounter();
+            if (expBox) expBox.style.display = 'block';
+            return;
         }
-    } else if (q.type === "sql") {
-        const hasSelect = upperInput.includes("SELECT");
-        const hasFrom = upperInput.includes("FROM");
-        const hasKeywords = q.keywords.every(kw => upperInput.includes(kw));
+    }
 
-        if (!hasSelect || !hasFrom) {
-            feedbackMsg = "⚠️ A valid SQL query must contain both 'SELECT' and 'FROM' clauses.";
-        } else if (!hasKeywords) {
-            feedbackMsg = `⚠️ Your query is missing required SQL clauses: ${q.keywords.join(", ")}.`;
-        } else {
-            isValid = true;
+    // Check against solution required token sets
+    if (q.requiredTokensOptions) {
+        for (let optionSet of q.requiredTokensOptions) {
+            let allMatched = true;
+            let missingInSet = [];
+            for (let token of optionSet) {
+                if (!upperInput.includes(token)) {
+                    allMatched = false;
+                    missingInSet.push(token);
+                }
+            }
+            if (allMatched) {
+                isValid = true;
+                break;
+            } else {
+                missingTokens = missingInSet;
+            }
         }
     }
 
@@ -314,12 +323,12 @@ window.verifyAnswer = function(id) {
         userProgress[id] = true;
         localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
-        alert("✅ Answer Validated! Full Excel formula / SQL query structure confirmed.");
+        alert("✅ Answer Validated! Full solution structure and parameters confirmed.");
     } else {
         delete userProgress[id];
         localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
-        alert(feedbackMsg);
+        alert(`⚠️ Incomplete Solution. Missing required solution parameters/columns: ${missingTokens.join(", ")}.`);
     }
 };
 
