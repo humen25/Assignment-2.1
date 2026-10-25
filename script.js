@@ -135,7 +135,7 @@ const questionBank = [
     }
 ];
 
-// Persistent State Storage (localStorage)
+// Persistent State Storage
 let userProgress = JSON.parse(localStorage.getItem('exam_progress') || '{}');
 let savedAnswers = JSON.parse(localStorage.getItem('exam_answers') || '{}');
 let currentMode = "practice";
@@ -150,13 +150,13 @@ const totalCountEl = document.getElementById('total-count');
 const timerBar = document.getElementById('exam-timer-bar');
 const timerDisplay = document.getElementById('timer-display');
 
-// Save typed text into localStorage on every keystroke
+// Save typed text into localStorage
 window.saveAnswer = function(id, text) {
     savedAnswers[id] = text;
     localStorage.setItem('exam_answers', JSON.stringify(savedAnswers));
 };
 
-// Render Questions and populate saved text
+// Render Questions
 function renderQuestions() {
     const selectedCategory = categoryFilter.value;
     container.innerHTML = '';
@@ -166,7 +166,7 @@ function renderQuestions() {
     updateProgressCounter();
 
     filtered.forEach((q, idx) => {
-        card = document.createElement('div');
+        const card = document.createElement('div');
         card.className = 'question-card';
         card.id = `card-${q.id}`;
         
@@ -216,7 +216,7 @@ function renderQuestions() {
         container.appendChild(card);
     });
 
-    // Explicitly restore text into textareas via DOM property assignment
+    // Restore text into textareas
     filtered.forEach(q => {
         const textarea = document.getElementById(`input-${q.id}`);
         if (textarea && savedAnswers[q.id] !== undefined) {
@@ -230,7 +230,7 @@ function updateProgressCounter() {
     completedCountEl.innerText = completed;
 }
 
-// Toggle Context (Only modifies prompt text without touch/re-render of textarea)
+// Toggle Context
 window.toggleContext = function(id) {
     const textEl = document.getElementById(`text-${id}`);
     const btnEl = document.getElementById(`btn-toggle-ctx-${id}`);
@@ -247,7 +247,7 @@ window.toggleContext = function(id) {
     }
 };
 
-// Validate Answer Input (Saves answer and opens explanation drawer)
+// Validate Answer Input
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
@@ -314,19 +314,78 @@ function stopExamTimer() {
     clearInterval(examTimerInterval);
 }
 
-// Submit Full Exam
+// Interactive Exam Submission & Results Banner
 window.submitFullExam = function() {
     stopExamTimer();
-    let solved = Object.keys(userProgress).length;
-    let total = questionBank.length;
-    let percentage = Math.round((solved / total) * 100);
+    
+    let solvedCount = Object.keys(userProgress).length;
+    let totalCount = questionBank.length;
+    let percentage = Math.round((solvedCount / totalCount) * 100);
+    let statusText = percentage >= 70 ? "PASS ✅" : "NEEDS PRACTICE ⚠️";
+    let statusColor = percentage >= 70 ? "#16a34a" : "#d97706";
 
-    alert(`📋 Exam Submitted!\n\nYou solved ${solved} out of ${total} questions (${percentage}%).`);
+    // Auto-expand all solutions for post-exam review
+    questionBank.forEach(q => {
+        const expBox = document.getElementById(`explanation-${q.id}`);
+        if (expBox) expBox.style.display = 'block';
+    });
+
+    // Remove existing results banner if present
+    const oldBanner = document.getElementById('exam-results-banner');
+    if (oldBanner) oldBanner.remove();
+
+    // Create stylish on-screen Results Card
+    const resultsBanner = document.createElement('div');
+    resultsBanner.id = 'exam-results-banner';
+    resultsBanner.style.cssText = `
+        background: #ffffff;
+        border: 2px solid ${statusColor};
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    `;
+
+    resultsBanner.innerHTML = `
+        <h2 style="margin: 0 0 0.5rem 0; color: #0f172a; font-size: 1.5rem;">📋 Exam Performance Scorecard</h2>
+        <div style="font-size: 1.25rem; font-weight: 700; color: ${statusColor}; margin-bottom: 0.5rem;">
+            Final Score: ${solvedCount} / ${totalCount} Questions Solved (${percentage}%) — ${statusText}
+        </div>
+        <p style="margin: 0 0 1.25rem 0; color: #475569; font-size: 0.95rem;">
+            All official Excel formulas, SQL queries, and audit explanations have been expanded below for your review.
+        </p>
+        <button type="button" class="btn-primary" onclick="restartExam()" style="background: #2563eb; color: #fff; padding: 0.6rem 1.2rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer;">
+            🔄 Retake Mock Exam
+        </button>
+    `;
+
+    // Insert banner above question list and scroll to top smoothly
+    container.insertAdjacentElement('beforebegin', resultsBanner);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Restart Exam Handler
+window.restartExam = function() {
+    userProgress = {};
+    savedAnswers = {};
+    localStorage.removeItem('exam_progress');
+    localStorage.removeItem('exam_answers');
+    
+    const banner = document.getElementById('exam-results-banner');
+    if (banner) banner.remove();
+
+    if (currentMode === 'exam') {
+        startExamTimer();
+    }
+    renderQuestions();
 };
 
 // Mode Selection Handler
 modeSelect.addEventListener('change', (e) => {
     currentMode = e.target.value;
+    const banner = document.getElementById('exam-results-banner');
+    if (banner) banner.remove();
+
     if (currentMode === 'exam') {
         timerBar.style.display = 'flex';
         categoryFilter.value = 'all';
