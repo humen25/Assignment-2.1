@@ -247,7 +247,7 @@ window.toggleContext = function(id) {
     }
 };
 
-// Strict Validation Function with Argument Checking
+// Strict Validation Function (Disallows empty parameters inside parentheses)
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
@@ -275,20 +275,21 @@ window.verifyAnswer = function(id) {
                 feedbackMsg = "⚠️ Please provide a complete interpretation referencing statistical significance or R-squared.";
             }
         } else {
-            // Check formula format
             const startsWithEquals = upperInput.startsWith("=");
-            const parenMatch = rawVal.match(/\(([^)]+)\)/);
-            const insideParens = parenMatch ? parenMatch[1].trim() : "";
+            const openIdx = rawVal.indexOf("(");
+            const closeIdx = rawVal.lastIndexOf(")");
+            const hasParens = openIdx !== -1 && closeIdx !== -1 && closeIdx > openIdx;
+            const insideParens = hasParens ? rawVal.substring(openIdx + 1, closeIdx).trim() : "";
             const hasFunction = q.keywords.some(kw => upperInput.includes(kw));
 
             if (!startsWithEquals) {
-                feedbackMsg = "⚠️ An Excel formula must start with '=' (e.g. =TEXTAFTER(A2, \"_\")).";
-            } else if (!parenMatch || insideParens.length === 0) {
-                feedbackMsg = "⚠️ Formula arguments cannot be empty inside '()'. You must provide cell references and parameters (e.g. =TEXTAFTER(A2, \"_\")).";
+                feedbackMsg = "⚠️ An Excel formula must start with '=' (e.g. =XLOOKUP(A2, ...)).";
+            } else if (!hasParens || insideParens.length === 0) {
+                feedbackMsg = "⚠️ Formula arguments cannot be empty inside '()'. You must provide parameters (e.g., cell references like A2).";
             } else if (!hasFunction) {
                 feedbackMsg = `⚠️ Missing expected Excel function (e.g., ${q.keywords.join(" or ")}).`;
-            } else if (!insideParens.toUpperCase().includes("A2") && !insideParens.includes(":") && !insideParens.includes("_")) {
-                feedbackMsg = "⚠️ Incomplete formula arguments. Make sure to reference target cells (e.g., A2) or parameters.";
+            } else if (insideParens.length < 2) {
+                feedbackMsg = "⚠️ Incomplete formula arguments inside '()'. Provide valid cell references or parameters.";
             } else {
                 isValid = true;
             }
