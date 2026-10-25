@@ -18,7 +18,6 @@ const questionBank = [
             ],
             examTip: "XLOOKUP is preferred over VLOOKUP because it does not break when columns are reordered and defaults to exact matching."
         },
-        // Strict Validation Requirement: Must contain function + lookup key + lookup range + return range
         requiredTokensOptions: [
             ["XLOOKUP", "A2", "A:A", "D:D"],
             ["VLOOKUP", "A2", "4"]
@@ -83,10 +82,10 @@ const questionBank = [
             ],
             examTip: "Always compare P-values to 0.05. If P-value < 0.05, reject the null hypothesis."
         },
+        // Strict Validation: Requires Advertising + Significant + R-squared value (84 or 0.84)
         requiredTokensOptions: [
-            ["ADVERTISING", "SIGNIFICANT"],
-            ["ADVERTISING", "84"],
-            ["ADVERTISING", "0.84"]
+            ["ADVERTISING", "SIGNIFICANT", "84"],
+            ["ADVERTISING", "SIGNIFICANT", "0.84"]
         ]
     },
     {
@@ -106,8 +105,9 @@ const questionBank = [
             ],
             examTip: "Verify foreign keys match across tables: p.id = b.person_id and b.account_number = atm.account_number."
         },
+        // Strict Validation: Requires main SELECT query, JOINs across tables, and duration limit
         requiredTokensOptions: [
-            ["SELECT", "FROM", "PEOPLE", "BANK_ACCOUNTS", "ATM_TRANSACTIONS", "LEGGETT STREET"]
+            ["SELECT", "NAME", "FROM", "PEOPLE", "JOIN", "BANK_ACCOUNTS", "ATM_TRANSACTIONS", "LEGGETT STREET", "60"]
         ]
     },
     {
@@ -127,8 +127,9 @@ const questionBank = [
             ],
             examTip: "Use WHERE to filter individual rows BEFORE grouping; use HAVING to filter aggregated results AFTER grouping."
         },
+        // Strict Validation: Requires ORDER BY clause
         requiredTokensOptions: [
-            ["SELECT", "FROM", "INVOICE", "GROUP BY", "HAVING", "45"]
+            ["SELECT", "CUSTOMERID", "SUM(TOTAL)", "FROM", "INVOICE", "GROUP BY", "HAVING", "45", "ORDER BY"]
         ]
     },
     {
@@ -149,7 +150,7 @@ const questionBank = [
             examTip: "Always include all non-aggregated SELECT columns inside the GROUP BY clause."
         },
         requiredTokensOptions: [
-            ["SELECT", "FROM", "PCARD_TRANSACTIONS", "GROUP BY", "HAVING", "2500"]
+            ["SELECT", "CARDHOLDER_ID", "VENDOR_NAME", "TRANSACTION_DATE", "FROM", "PCARD_TRANSACTIONS", "GROUP BY", "HAVING", "2500"]
         ]
     }
 ];
@@ -266,7 +267,7 @@ window.toggleContext = function(id) {
     }
 };
 
-// Strict Multi-Token Solution Validation
+// Strict Validation Function
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
@@ -285,7 +286,7 @@ window.verifyAnswer = function(id) {
     let isValid = false;
     let missingTokens = [];
 
-    // Basic Syntax Structure Checks
+    // Check Excel structure start
     if (q.type === "excel" && q.category !== "excel-regression") {
         if (!upperInput.startsWith("=")) {
             alert("⚠️ An Excel formula must start with '=' (e.g. =XLOOKUP(A2, ...)).");
@@ -297,7 +298,7 @@ window.verifyAnswer = function(id) {
         }
     }
 
-    // Check against solution required token sets
+    // Check tokens
     if (q.requiredTokensOptions) {
         for (let optionSet of q.requiredTokensOptions) {
             let allMatched = true;
@@ -328,7 +329,7 @@ window.verifyAnswer = function(id) {
         delete userProgress[id];
         localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
-        alert(`⚠️ Incomplete Solution. Missing required solution parameters/columns: ${missingTokens.join(", ")}.`);
+        alert(`⚠️ Incomplete Solution. Missing required solution parameters/clauses: ${missingTokens.join(", ")}.`);
     }
 };
 
