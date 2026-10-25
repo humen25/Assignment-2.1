@@ -119,7 +119,7 @@ const questionBank = [
         category: "sql-pwc",
         type: "sql",
         title: "SQL Part 2 (P-Card Audit): Split Purchasing Fraud Detection",
-        accountingContext: "Purchasing card policies require authorization for transactions over $2,500. Fraudulent cardholders attempt to bypass approval limits by splitting orders into smaller purchases on the same day with the same vendor.",
+        accountingContext: "Purchasing card policies require authorization for transactions over $2,500. Fraudulent cardholders attempt to bypass approval limits by splitting purchases into smaller amounts on the same day with the same vendor.",
         technicalPrompt: "Write an SQL query to group P-Card transactions by Cardholder_ID, Vendor_Name, and Transaction_Date where COUNT(*) > 1 and SUM(Amount) > 2500.",
         solution: "SELECT Cardholder_ID, Vendor_Name, Transaction_Date, COUNT(*) AS Tx_Count, SUM(Amount) AS Total_Amount\nFROM PCard_Transactions\nGROUP BY Cardholder_ID, Vendor_Name, Transaction_Date\nHAVING COUNT(*) > 1 AND SUM(Amount) > 2500;",
         explanation: {
@@ -137,6 +137,9 @@ const questionBank = [
 
 // State Variables
 let userProgress = {};
+let userAnswers = {};
+let solutionVisibility = {};
+let contextModes = {};
 let currentMode = "practice";
 let examTimerInterval = null;
 let timeRemaining = 45 * 60; // 45 minutes in seconds
@@ -148,6 +151,11 @@ const completedCountEl = document.getElementById('completed-count');
 const totalCountEl = document.getElementById('total-count');
 const timerBar = document.getElementById('exam-timer-bar');
 const timerDisplay = document.getElementById('timer-display');
+
+// Track text input changes in real time
+window.updateUserAnswer = function(id, value) {
+    userAnswers[id] = value;
+};
 
 // Render Questions
 function renderQuestions() {
@@ -161,6 +169,13 @@ function renderQuestions() {
     filtered.forEach((q, idx) => {
         if (userProgress[q.id]) completed++;
 
+        const currentAnswer = userAnswers[q.id] || '';
+        const isSolutionVisible = solutionVisibility[q.id] ? 'block' : 'none';
+        const currentModeState = contextModes[q.id] || 'context';
+        const isContext = currentModeState === 'context';
+        const promptText = isContext ? q.accountingContext : q.technicalPrompt;
+        const toggleBtnLabel = isContext ? "Switch to Technical Prompt" : "Switch to Accounting Context";
+
         const card = document.createElement('div');
         card.className = 'question-card';
         card.id = `card-${q.id}`;
@@ -168,25 +183,27 @@ function renderQuestions() {
         card.innerHTML = `
             <div class="card-header">
                 <span class="tag ${q.type}">${q.type.toUpperCase()}</span>
-                <button class="toggle-mode-btn" onclick="toggleContext(${q.id})">Switch to Technical Prompt</button>
+                <button class="toggle-mode-btn" onclick="toggleContext(${q.id})">${toggleBtnLabel}</button>
             </div>
             <div class="question-title">${idx + 1}. ${q.title}</div>
-            <p class="question-text" id="text-${q.id}" data-mode="context" 
+            <p class="question-text" id="text-${q.id}" data-mode="${currentModeState}" 
                data-context="${q.accountingContext}" 
                data-tech="${q.technicalPrompt}">
-               ${q.accountingContext}
+               ${promptText}
             </p>
             
             <div class="interactive-area">
                 <label style="font-size: 0.85rem; color: #64748b; font-weight:600;">Your Working Formula / Query:</label>
-                <textarea id="input-${q.id}" placeholder="Type your Excel formula or SQL query here..."></textarea>
+                <textarea id="input-${q.id}" 
+                          placeholder="Type your Excel formula or SQL query here..."
+                          oninput="updateUserAnswer(${q.id}, this.value)">${currentAnswer}</textarea>
                 <div class="action-btns">
                     <button class="btn-primary" onclick="verifyAnswer(${q.id})">Validate Answer</button>
                     <button class="btn-secondary" onclick="toggleExplanation(${q.id})">Toggle Solution & Explanation</button>
                 </div>
             </div>
 
-            <div class="explanation-box" id="explanation-${q.id}">
+            <div class="explanation-box" id="explanation-${q.id}" style="display: ${isSolutionVisible};">
                 <div class="explanation-section">
                     <h4>Official Excel / SQL Solution</h4>
                     <div class="solution-code">${q.solution}</div>
@@ -214,33 +231,27 @@ function renderQuestions() {
 
 // Toggle between Accounting Context and Technical Prompt
 window.toggleContext = function(id) {
-    const textEl = document.getElementById(`text-${id}`);
-    const btn = textEl.parentElement.querySelector('.toggle-mode-btn');
-    
-    if (textEl.getAttribute('data-mode') === 'context') {
-        textEl.innerText = textEl.getAttribute('data-tech');
-        textEl.setAttribute('data-mode', 'tech');
-        btn.innerText = "Switch to Accounting Context";
-    } else {
-        textEl.innerText = textEl.getAttribute('data-context');
-        textEl.setAttribute('data-mode', 'context');
-        btn.innerText = "Switch to Technical Prompt";
-    }
+    const current = contextModes[id] || 'context';
+    contextModes[id] = (current === 'context') ? 'tech' : 'context';
+    renderQuestions();
 };
 
 // Validate Answer Input
 window.verifyAnswer = function(id) {
-    const input = document.getElementById(`input-${id}`).value.toUpperCase();
-    const q = questionBank.find(item => item.id === id);
-    const expBox = document.getElementById(`explanation-${id}`);
+    const inputEl = document.getElementById(`input-${id}`);
+    const inputVal = inputEl ? inputEl.value : (userAnswers[id] || '');
+    userAnswers[id] = inputVal;
 
-    if (!input.trim()) {
+    if (!inputVal.trim()) {
         alert("Please write your formula or query before validating.");
         return;
     }
 
-    const matched = q.keywords.some(kw => input.includes(kw.toUpperCase()));
-    expBox.style.display = 'block';
+    const q = questionBank.find(item => item.id === id);
+    const matched = q.keywords.some(kw => inputVal.toUpperCase().includes(kw.toUpperCase()));
+    
+    // Reveal official solution box upon validation
+    solutionVisibility[id] = true;
 
     if (matched) {
         userProgress[id] = true;
@@ -252,10 +263,10 @@ window.verifyAnswer = function(id) {
     renderQuestions();
 };
 
-// Toggle Solution Box
+// Toggle Solution Box Display
 window.toggleExplanation = function(id) {
-    const expBox = document.getElementById(`explanation-${id}`);
-    expBox.style.display = (expBox.style.display === 'block') ? 'none' : 'block';
+    solutionVisibility[id] = !solutionVisibility[id];
+    renderQuestions();
 };
 
 // Countdown Timer Logic
