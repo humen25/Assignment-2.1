@@ -247,7 +247,7 @@ window.toggleContext = function(id) {
     }
 };
 
-// Strict Validation Function
+// Strict Validation Function with Argument Checking
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
@@ -275,17 +275,20 @@ window.verifyAnswer = function(id) {
                 feedbackMsg = "⚠️ Please provide a complete interpretation referencing statistical significance or R-squared.";
             }
         } else {
-            // Formula MUST start with '=' and contain '(' and ')'
+            // Check formula format
             const startsWithEquals = upperInput.startsWith("=");
-            const hasParens = upperInput.includes("(") && upperInput.includes(")");
+            const parenMatch = rawVal.match(/\(([^)]+)\)/);
+            const insideParens = parenMatch ? parenMatch[1].trim() : "";
             const hasFunction = q.keywords.some(kw => upperInput.includes(kw));
 
             if (!startsWithEquals) {
-                feedbackMsg = "⚠️ An Excel formula must start with an equals sign '=' (e.g., =XLOOKUP(...)). Typing just the function name is not a valid formula.";
-            } else if (!hasParens) {
-                feedbackMsg = "⚠️ An Excel formula must include parameters inside opening and closing parentheses '()'.";
+                feedbackMsg = "⚠️ An Excel formula must start with '=' (e.g. =TEXTAFTER(A2, \"_\")).";
+            } else if (!parenMatch || insideParens.length === 0) {
+                feedbackMsg = "⚠️ Formula arguments cannot be empty inside '()'. You must provide cell references and parameters (e.g. =TEXTAFTER(A2, \"_\")).";
             } else if (!hasFunction) {
                 feedbackMsg = `⚠️ Missing expected Excel function (e.g., ${q.keywords.join(" or ")}).`;
+            } else if (!insideParens.toUpperCase().includes("A2") && !insideParens.includes(":") && !insideParens.includes("_")) {
+                feedbackMsg = "⚠️ Incomplete formula arguments. Make sure to reference target cells (e.g., A2) or parameters.";
             } else {
                 isValid = true;
             }
