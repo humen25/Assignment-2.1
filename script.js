@@ -1,4 +1,4 @@
-// Question Bank built strictly from the Excel and SQL course materials
+// Official SDU Data Analytics in Accounting Question Bank
 const questionBank = [
     {
         id: 1,
@@ -135,8 +135,11 @@ const questionBank = [
     }
 ];
 
+// State Variables
 let userProgress = {};
 let currentMode = "practice";
+let examTimerInterval = null;
+let timeRemaining = 45 * 60; // 45 minutes in seconds
 
 const container = document.getElementById('question-container');
 const categoryFilter = document.getElementById('category-filter');
@@ -144,7 +147,9 @@ const modeSelect = document.getElementById('mode-select');
 const completedCountEl = document.getElementById('completed-count');
 const totalCountEl = document.getElementById('total-count');
 const timerBar = document.getElementById('exam-timer-bar');
+const timerDisplay = document.getElementById('timer-display');
 
+// Render Questions
 function renderQuestions() {
     const selectedCategory = categoryFilter.value;
     container.innerHTML = '';
@@ -177,7 +182,7 @@ function renderQuestions() {
                 <textarea id="input-${q.id}" placeholder="Type your Excel formula or SQL query here..."></textarea>
                 <div class="action-btns">
                     <button class="btn-primary" onclick="verifyAnswer(${q.id})">Validate Answer</button>
-                    ${currentMode === 'practice' ? `<button class="btn-secondary" onclick="toggleExplanation(${q.id})">Toggle Explanation</button>` : ''}
+                    <button class="btn-secondary" onclick="toggleExplanation(${q.id})">Toggle Solution & Explanation</button>
                 </div>
             </div>
 
@@ -207,6 +212,7 @@ function renderQuestions() {
     completedCountEl.innerText = completed;
 }
 
+// Toggle between Accounting Context and Technical Prompt
 window.toggleContext = function(id) {
     const textEl = document.getElementById(`text-${id}`);
     const btn = textEl.parentElement.querySelector('.toggle-mode-btn');
@@ -222,6 +228,7 @@ window.toggleContext = function(id) {
     }
 };
 
+// Validate Answer Input
 window.verifyAnswer = function(id) {
     const input = document.getElementById(`input-${id}`).value.toUpperCase();
     const q = questionBank.find(item => item.id === id);
@@ -237,7 +244,7 @@ window.verifyAnswer = function(id) {
 
     if (matched) {
         userProgress[id] = true;
-        alert("✅ Answer Validated! Core Excel/SQL syntax detected.");
+        alert("✅ Answer Validated! Core Excel/SQL syntax recognized.");
     } else {
         alert("⚠️ Check your syntax. Key expected terms (e.g. " + q.keywords.join(", ") + ") were missing.");
     }
@@ -245,19 +252,63 @@ window.verifyAnswer = function(id) {
     renderQuestions();
 };
 
+// Toggle Solution Box
 window.toggleExplanation = function(id) {
     const expBox = document.getElementById(`explanation-${id}`);
     expBox.style.display = (expBox.style.display === 'block') ? 'none' : 'block';
 };
 
+// Countdown Timer Logic
+function startExamTimer() {
+    clearInterval(examTimerInterval);
+    timeRemaining = 45 * 60; // 45 minutes
+
+    examTimerInterval = setInterval(() => {
+        timeRemaining--;
+        
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        
+        const formattedMin = minutes < 10 ? `0${minutes}` : minutes;
+        const formattedSec = seconds < 10 ? `0${seconds}` : seconds;
+        
+        if (timerDisplay) {
+            timerDisplay.innerText = `${formattedMin}:${formattedSec}`;
+        }
+
+        if (timeRemaining <= 0) {
+            clearInterval(examTimerInterval);
+            alert("⏰ Time is up! Your Mock Exam is being automatically submitted.");
+            submitFullExam();
+        }
+    }, 1000);
+}
+
+function stopExamTimer() {
+    clearInterval(examTimerInterval);
+}
+
+// Submit Full Exam
+window.submitFullExam = function() {
+    stopExamTimer();
+    let solved = Object.keys(userProgress).length;
+    let total = questionBank.length;
+    let percentage = Math.round((solved / total) * 100);
+
+    alert(`📋 Exam Submitted!\n\nYou solved ${solved} out of ${total} questions (${percentage}%).`);
+};
+
+// Mode Selection Handler
 modeSelect.addEventListener('change', (e) => {
     currentMode = e.target.value;
     if (currentMode === 'exam') {
         timerBar.style.display = 'flex';
         categoryFilter.value = 'all';
         document.getElementById('module-filter-group').style.display = 'none';
-        alert("⏱️ Timed Mock Exam Mode Started! Complete all Excel & SQL tasks and submit when finished.");
+        startExamTimer();
+        alert("⏱️ Timed Mock Exam Mode Started! You have 45:00 minutes.");
     } else {
+        stopExamTimer();
         timerBar.style.display = 'none';
         document.getElementById('module-filter-group').style.display = 'flex';
     }
@@ -266,5 +317,5 @@ modeSelect.addEventListener('change', (e) => {
 
 categoryFilter.addEventListener('change', renderQuestions);
 
-// Initial Load
+// Initial Page Load
 renderQuestions();
