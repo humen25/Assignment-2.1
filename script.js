@@ -135,8 +135,9 @@ const questionBank = [
     }
 ];
 
-// Tracking State
-let userProgress = {};
+// Persistent State Storage (localStorage)
+let userProgress = JSON.parse(localStorage.getItem('exam_progress') || '{}');
+let savedAnswers = JSON.parse(localStorage.getItem('exam_answers') || '{}');
 let currentMode = "practice";
 let examTimerInterval = null;
 let timeRemaining = 45 * 60;
@@ -149,7 +150,13 @@ const totalCountEl = document.getElementById('total-count');
 const timerBar = document.getElementById('exam-timer-bar');
 const timerDisplay = document.getElementById('timer-display');
 
-// Render Questions DOM once per filter/mode change
+// Save typed text into localStorage on every keystroke
+window.saveAnswer = function(id, text) {
+    savedAnswers[id] = text;
+    localStorage.setItem('exam_answers', JSON.stringify(savedAnswers));
+};
+
+// Render Questions and populate saved text
 function renderQuestions() {
     const selectedCategory = categoryFilter.value;
     container.innerHTML = '';
@@ -159,14 +166,14 @@ function renderQuestions() {
     updateProgressCounter();
 
     filtered.forEach((q, idx) => {
-        const card = document.createElement('div');
+        card = document.createElement('div');
         card.className = 'question-card';
         card.id = `card-${q.id}`;
         
         card.innerHTML = `
             <div class="card-header">
                 <span class="tag ${q.type}">${q.type.toUpperCase()}</span>
-                <button class="toggle-mode-btn" id="btn-toggle-ctx-${q.id}" onclick="toggleContext(${q.id})">Switch to Technical Prompt</button>
+                <button type="button" class="toggle-mode-btn" id="btn-toggle-ctx-${q.id}" onclick="toggleContext(${q.id})">Switch to Technical Prompt</button>
             </div>
             <div class="question-title">${idx + 1}. ${q.title}</div>
             <p class="question-text" id="text-${q.id}" data-mode="context" 
@@ -177,10 +184,12 @@ function renderQuestions() {
             
             <div class="interactive-area">
                 <label style="font-size: 0.85rem; color: #64748b; font-weight:600;">Your Working Formula / Query:</label>
-                <textarea id="input-${q.id}" placeholder="Type your Excel formula or SQL query here..."></textarea>
+                <textarea id="input-${q.id}" 
+                          placeholder="Type your Excel formula or SQL query here..." 
+                          oninput="saveAnswer(${q.id}, this.value)"></textarea>
                 <div class="action-btns">
-                    <button class="btn-primary" onclick="verifyAnswer(${q.id})">Validate Answer</button>
-                    <button class="btn-secondary" onclick="toggleExplanation(${q.id})">Toggle Solution & Explanation</button>
+                    <button type="button" class="btn-primary" onclick="verifyAnswer(${q.id})">Validate Answer</button>
+                    <button type="button" class="btn-secondary" onclick="toggleExplanation(${q.id})">Toggle Solution & Explanation</button>
                 </div>
             </div>
 
@@ -206,6 +215,14 @@ function renderQuestions() {
         `;
         container.appendChild(card);
     });
+
+    // Explicitly restore text into textareas via DOM property assignment
+    filtered.forEach(q => {
+        const textarea = document.getElementById(`input-${q.id}`);
+        if (textarea && savedAnswers[q.id] !== undefined) {
+            textarea.value = savedAnswers[q.id];
+        }
+    });
 }
 
 function updateProgressCounter() {
@@ -213,7 +230,7 @@ function updateProgressCounter() {
     completedCountEl.innerText = completed;
 }
 
-// Direct DOM manipulation - never destroys textarea content!
+// Toggle Context (Only modifies prompt text without touch/re-render of textarea)
 window.toggleContext = function(id) {
     const textEl = document.getElementById(`text-${id}`);
     const btnEl = document.getElementById(`btn-toggle-ctx-${id}`);
@@ -230,13 +247,14 @@ window.toggleContext = function(id) {
     }
 };
 
-// Validate Answer Input - direct DOM update!
+// Validate Answer Input (Saves answer and opens explanation drawer)
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
     
     if (!inputEl) return;
     const inputVal = inputEl.value;
+    saveAnswer(id, inputVal);
 
     if (!inputVal.trim()) {
         alert("Please write your formula or query before validating.");
@@ -246,11 +264,11 @@ window.verifyAnswer = function(id) {
     const q = questionBank.find(item => item.id === id);
     const matched = q.keywords.some(kw => inputVal.toUpperCase().includes(kw.toUpperCase()));
     
-    // Automatically open explanation box on validation
     if (expBox) expBox.style.display = 'block';
 
     if (matched) {
         userProgress[id] = true;
+        localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
         alert("✅ Answer Validated! Core Excel/SQL syntax recognized.");
     } else {
@@ -258,7 +276,7 @@ window.verifyAnswer = function(id) {
     }
 };
 
-// Toggle Solution Box Display - direct DOM update!
+// Toggle Solution Box Display
 window.toggleExplanation = function(id) {
     const expBox = document.getElementById(`explanation-${id}`);
     if (expBox) {
