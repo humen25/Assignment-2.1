@@ -36,7 +36,7 @@ const questionBank = [
             ],
             examTip: "If TEXTAFTER is unavailable in older Excel versions, use the LEN + FIND combination."
         },
-        keywords: ["TEXTAFTER", "RIGHT", "MID", "FIND"]
+        keywords: ["TEXTAFTER", "RIGHT", "MID"]
     },
     {
         id: 3,
@@ -74,7 +74,7 @@ const questionBank = [
             ],
             examTip: "Always compare P-values to 0.05. If P-value < 0.05, reject the null hypothesis."
         },
-        keywords: ["SIGNIFICANT", "84%", "P-VALUE"]
+        keywords: ["SIGNIFICANT", "84%", "ADVERTISING"]
     },
     {
         id: 5,
@@ -93,7 +93,7 @@ const questionBank = [
             ],
             examTip: "Verify foreign keys match across tables: p.id = b.person_id and b.account_number = atm.account_number."
         },
-        keywords: ["SELECT", "JOIN", "WHERE"]
+        keywords: ["SELECT", "FROM", "JOIN", "WHERE"]
     },
     {
         id: 6,
@@ -112,7 +112,7 @@ const questionBank = [
             ],
             examTip: "Use WHERE to filter individual rows BEFORE grouping; use HAVING to filter aggregated results AFTER grouping."
         },
-        keywords: ["GROUP BY", "HAVING", "SUM"]
+        keywords: ["SELECT", "FROM", "GROUP BY", "HAVING"]
     },
     {
         id: 7,
@@ -131,7 +131,7 @@ const questionBank = [
             ],
             examTip: "Always include all non-aggregated SELECT columns inside the GROUP BY clause."
         },
-        keywords: ["GROUP BY", "HAVING", "COUNT"]
+        keywords: ["SELECT", "FROM", "GROUP BY", "HAVING"]
     }
 ];
 
@@ -247,32 +247,75 @@ window.toggleContext = function(id) {
     }
 };
 
-// Validate Answer Input
+// Strict Validation Function
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
     
     if (!inputEl) return;
-    const inputVal = inputEl.value;
-    saveAnswer(id, inputVal);
+    const rawVal = inputEl.value.trim();
+    saveAnswer(id, rawVal);
 
-    if (!inputVal.trim()) {
+    if (!rawVal) {
         alert("Please write your formula or query before validating.");
         return;
     }
 
     const q = questionBank.find(item => item.id === id);
-    const matched = q.keywords.some(kw => inputVal.toUpperCase().includes(kw.toUpperCase()));
-    
+    const upperInput = rawVal.toUpperCase();
+    let isValid = false;
+    let feedbackMsg = "";
+
+    if (q.type === "excel") {
+        if (q.category === "excel-regression") {
+            const hasKeywords = q.keywords.some(kw => upperInput.includes(kw));
+            if (hasKeywords && rawVal.length >= 10) {
+                isValid = true;
+            } else {
+                feedbackMsg = "⚠️ Please provide a complete interpretation referencing statistical significance or R-squared.";
+            }
+        } else {
+            // Formula MUST start with '=' and contain '(' and ')'
+            const startsWithEquals = upperInput.startsWith("=");
+            const hasParens = upperInput.includes("(") && upperInput.includes(")");
+            const hasFunction = q.keywords.some(kw => upperInput.includes(kw));
+
+            if (!startsWithEquals) {
+                feedbackMsg = "⚠️ An Excel formula must start with an equals sign '=' (e.g., =XLOOKUP(...)). Typing just the function name is not a valid formula.";
+            } else if (!hasParens) {
+                feedbackMsg = "⚠️ An Excel formula must include parameters inside opening and closing parentheses '()'.";
+            } else if (!hasFunction) {
+                feedbackMsg = `⚠️ Missing expected Excel function (e.g., ${q.keywords.join(" or ")}).`;
+            } else {
+                isValid = true;
+            }
+        }
+    } else if (q.type === "sql") {
+        const hasSelect = upperInput.includes("SELECT");
+        const hasFrom = upperInput.includes("FROM");
+        const hasKeywords = q.keywords.every(kw => upperInput.includes(kw));
+
+        if (!hasSelect || !hasFrom) {
+            feedbackMsg = "⚠️ A valid SQL query must contain both 'SELECT' and 'FROM' clauses.";
+        } else if (!hasKeywords) {
+            feedbackMsg = `⚠️ Your query is missing required SQL clauses: ${q.keywords.join(", ")}.`;
+        } else {
+            isValid = true;
+        }
+    }
+
     if (expBox) expBox.style.display = 'block';
 
-    if (matched) {
+    if (isValid) {
         userProgress[id] = true;
         localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
-        alert("✅ Answer Validated! Core Excel/SQL syntax recognized.");
+        alert("✅ Answer Validated! Full Excel formula / SQL query structure confirmed.");
     } else {
-        alert("⚠️ Check your syntax. Key expected terms (e.g. " + q.keywords.join(", ") + ") were missing.");
+        delete userProgress[id];
+        localStorage.setItem('exam_progress', JSON.stringify(userProgress));
+        updateProgressCounter();
+        alert(feedbackMsg);
     }
 };
 
@@ -324,17 +367,14 @@ window.submitFullExam = function() {
     let statusText = percentage >= 70 ? "PASS ✅" : "NEEDS PRACTICE ⚠️";
     let statusColor = percentage >= 70 ? "#16a34a" : "#d97706";
 
-    // Auto-expand all solutions for post-exam review
     questionBank.forEach(q => {
         const expBox = document.getElementById(`explanation-${q.id}`);
         if (expBox) expBox.style.display = 'block';
     });
 
-    // Remove existing results banner if present
     const oldBanner = document.getElementById('exam-results-banner');
     if (oldBanner) oldBanner.remove();
 
-    // Create stylish on-screen Results Card
     const resultsBanner = document.createElement('div');
     resultsBanner.id = 'exam-results-banner';
     resultsBanner.style.cssText = `
@@ -359,7 +399,6 @@ window.submitFullExam = function() {
         </button>
     `;
 
-    // Insert banner above question list and scroll to top smoothly
     container.insertAdjacentElement('beforebegin', resultsBanner);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
