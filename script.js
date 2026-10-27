@@ -304,21 +304,54 @@ function evaluateQuestion(id, upperInput, rawVal) {
             if (errors.length > 0) return { valid: false, msg: `⚠️ SUMIFS Parameter Error:\n• ${errors.join('\n• ')}` };
             return { valid: true, msg: "✅ Answer Validated! All SUMIFS ranges and criteria match the official audit solution." };
 
-        case 4: // Excel Part 4: Regression Interpretation (Flexible Conceptual Match)
+        case 4: // Excel Part 4: Line-by-Line Regression Evaluation
+            const lines = upperInput.split(/[\n;\.]+/).map(l => l.trim()).filter(l => l.length > 0);
+
+            // 1. Evaluate Advertising Section
+            const advLine = lines.find(l => l.includes("ADVERTISING") || l.includes("ADV")) || upperInput;
             const hasAdv = upperInput.includes("ADVERTISING") || upperInput.includes("ADV");
-            const hasAdvSig = upperInput.includes("SIGNIFICANT") || upperInput.includes("0.002") || upperInput.includes("< 0.05") || upperInput.includes("<0.05");
-            if (!hasAdv || !hasAdvSig) {
-                errors.push("Missing finding: Advertising expenditure must be identified as statistically significant (P-value 0.002 < 0.05).");
+
+            if (!hasAdv) {
+                errors.push("Missing finding: You must mention Advertising expenditure.");
+            } else {
+                const isAdvNegated = advLine.includes("NOT STATISTICALLY") || 
+                                     advLine.includes("IS NOT") || 
+                                     advLine.includes("NOT SIGNIFICANT") || 
+                                     advLine.includes("INSIGNIFICANT") || 
+                                     advLine.includes("UNSIGNIFICANT");
+                const hasSigWord = advLine.includes("SIGNIFICANT") || advLine.includes("0.002") || advLine.includes("< 0.05") || advLine.includes("<0.05");
+
+                if (isAdvNegated) {
+                    errors.push("Incorrect finding: Advertising expenditure IS statistically significant (P-value 0.002 < 0.05), but your answer states it is NOT significant.");
+                } else if (!hasSigWord) {
+                    errors.push("Missing finding: Advertising expenditure must be identified as statistically significant (P-value 0.002 < 0.05).");
+                }
             }
-            const hasSqFt = upperInput.includes("SQUARE") || upperInput.includes("FOOTAGE") || upperInput.includes("0.42");
-            const hasSqFtInsig = upperInput.includes("NOT") || upperInput.includes("INSIGNIFICANT") || upperInput.includes("0.42") || upperInput.includes("> 0.05") || upperInput.includes(">0.05");
-            if (!hasSqFt || !hasSqFtInsig) {
-                errors.push("Missing finding: Square Footage must be identified as NOT statistically significant (P-value 0.42 > 0.05).");
+
+            // 2. Evaluate Square Footage Section
+            const sqFtLine = lines.find(l => l.includes("SQUARE") || l.includes("FOOTAGE") || l.includes("SQ FT")) || "";
+            const hasSqFt = upperInput.includes("SQUARE") || upperInput.includes("FOOTAGE") || upperInput.includes("SQ FT") || upperInput.includes("0.42");
+
+            if (!hasSqFt) {
+                errors.push("Missing finding: You must mention Square Footage.");
+            } else {
+                const isSqFtNotSig = sqFtLine.includes("NOT") || 
+                                     sqFtLine.includes("INSIGNIFICANT") || 
+                                     sqFtLine.includes("UNSIGNIFICANT") || 
+                                     sqFtLine.includes("> 0.05") || 
+                                     sqFtLine.includes(">0.05") ||
+                                     sqFtLine.includes("0.42");
+                if (!isSqFtNotSig && sqFtLine.length > 0) {
+                    errors.push("Incorrect finding: Square Footage is NOT statistically significant (P-value 0.42 > 0.05), but your answer states it is significant.");
+                }
             }
+
+            // 3. Evaluate R-Squared / Variance Section
             const hasR2 = upperInput.includes("84") || upperInput.includes("0.84") || upperInput.includes("R-SQUARE") || upperInput.includes("R2") || upperInput.includes("VARIANCE");
             if (!hasR2) {
                 errors.push("Missing measure: R-squared value of 0.84 (84% revenue variance explained) must be specified.");
             }
+
             if (errors.length > 0) return { valid: false, msg: `⚠️ Regression Analysis Error:\n• ${errors.join('\n• ')}` };
             return { valid: true, msg: "✅ Answer Validated! All statistical significance findings and R-squared values match." };
 
