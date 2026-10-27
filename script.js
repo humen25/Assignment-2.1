@@ -261,13 +261,20 @@ function evaluateQuestion(id, upperInput, rawVal) {
                 if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Search key cell 'A2'");
                 if (!upperInput.includes("A:A")) errors.push("Missing parameter 2: Lookup range 'NYC_Film_Permits!A:A'");
                 if (!upperInput.includes("D:D")) errors.push("Missing parameter 3: Return range 'NYC_Film_Permits!D:D'");
+                
+                // Validate Parameter 4 (if_not_found) strictly
+                const hasFoundWithoutNot = (upperInput.includes('"FOUND"') || upperInput.includes("'FOUND'") || upperInput.includes("FOUND")) && 
+                                           !upperInput.includes("NOT FOUND") && !upperInput.includes("NOT_FOUND");
+                if (hasFoundWithoutNot) {
+                    errors.push("Incorrect parameter 4 (if_not_found): Expected '\"Not Found\"', but got '\"Found\"'.");
+                }
             } else {
                 if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Search key cell 'A2'");
                 if (!upperInput.includes("A:D") && !upperInput.includes("A:E")) errors.push("Missing parameter 2: Table array 'NYC_Film_Permits!A:D'");
                 if (!upperInput.includes("4")) errors.push("Missing parameter 3: Column index number '4'");
             }
             if (errors.length > 0) return { valid: false, msg: `⚠️ Formula Argument Error:\n• ${errors.join('\n• ')}` };
-            return { valid: true, msg: "✅ Answer Validated! Formula search key, lookup range, and return range match the official solution." };
+            return { valid: true, msg: "✅ Answer Validated! Formula search key, lookup range, return range, and parameters match the official solution." };
 
         case 2: // Excel Part 2: TEXTAFTER / RIGHT
             if (!upperInput.startsWith("=")) {
@@ -305,10 +312,10 @@ function evaluateQuestion(id, upperInput, rawVal) {
             return { valid: true, msg: "✅ Answer Validated! All SUMIFS ranges and criteria match the official audit solution." };
 
         case 4: // Excel Part 4: Line-by-Line Regression Evaluation
-            const lines = upperInput.split(/[\n;\.]+/).map(l => l.trim()).filter(l => l.length > 0);
+            const lines4 = upperInput.split(/[\n;\.]+/).map(l => l.trim()).filter(l => l.length > 0);
 
-            // 1. Evaluate Advertising Section
-            const advLine = lines.find(l => l.includes("ADVERTISING") || l.includes("ADV")) || upperInput;
+            // 1. Evaluate Advertising Expenditure
+            const advLine = lines4.find(l => l.includes("ADVERTISING") || l.includes("ADV")) || upperInput;
             const hasAdv = upperInput.includes("ADVERTISING") || upperInput.includes("ADV");
 
             if (!hasAdv) {
@@ -328,8 +335,8 @@ function evaluateQuestion(id, upperInput, rawVal) {
                 }
             }
 
-            // 2. Evaluate Square Footage Section
-            const sqFtLine = lines.find(l => l.includes("SQUARE") || l.includes("FOOTAGE") || l.includes("SQ FT")) || "";
+            // 2. Evaluate Square Footage
+            const sqFtLine = lines4.find(l => l.includes("SQUARE") || l.includes("FOOTAGE") || l.includes("SQ FT")) || "";
             const hasSqFt = upperInput.includes("SQUARE") || upperInput.includes("FOOTAGE") || upperInput.includes("SQ FT") || upperInput.includes("0.42");
 
             if (!hasSqFt) {
@@ -346,10 +353,18 @@ function evaluateQuestion(id, upperInput, rawVal) {
                 }
             }
 
-            // 3. Evaluate R-Squared / Variance Section
-            const hasR2 = upperInput.includes("84") || upperInput.includes("0.84") || upperInput.includes("R-SQUARE") || upperInput.includes("R2") || upperInput.includes("VARIANCE");
-            if (!hasR2) {
-                errors.push("Missing measure: R-squared value of 0.84 (84% revenue variance explained) must be specified.");
+            // 3. Evaluate R-Squared Strict Numerical Equality
+            const r2Match = upperInput.match(/(?:R-?SQUARE(?:D)?|R2|R\^2)\s*=\s*([0-9\.\%]+)/i);
+            if (r2Match) {
+                const val = r2Match[1].trim();
+                if (val !== "0.84" && val !== "84" && val !== "84%" && val !== ".84") {
+                    errors.push(`Incorrect R-squared value: The regression model states R-Squared = 0.84 (84%), but your answer states R-Squared = ${val}.`);
+                }
+            } else {
+                const hasCorrectR2Num = upperInput.includes("0.84") || upperInput.includes("84%");
+                if (!hasCorrectR2Num) {
+                    errors.push("Missing or incorrect measure: R-squared value of 0.84 (84% revenue variance explained) must be specified correctly.");
+                }
             }
 
             if (errors.length > 0) return { valid: false, msg: `⚠️ Regression Analysis Error:\n• ${errors.join('\n• ')}` };
