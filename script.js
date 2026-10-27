@@ -248,33 +248,61 @@ function evaluateQuestion(id, upperInput, rawVal) {
     let errors = [];
 
     switch (id) {
-        case 1: // Excel Part 1: XLOOKUP / VLOOKUP
+        case 1: // Excel Part 1: XLOOKUP / VLOOKUP (Strict Argument Parsing)
             if (!upperInput.startsWith("=")) {
                 return { valid: false, msg: "⚠️ Formula Format Error: Excel formulas must start with '=' (e.g. =XLOOKUP(A2, ...))." };
             }
             const isXlookup = upperInput.includes("XLOOKUP");
             const isVlookup = upperInput.includes("VLOOKUP");
+
             if (!isXlookup && !isVlookup) {
                 return { valid: false, msg: "⚠️ Function Error: Missing Excel lookup function. Expected =XLOOKUP(...) or =VLOOKUP(...)." };
             }
+
             if (isXlookup) {
-                if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Search key cell 'A2'");
-                if (!upperInput.includes("A:A")) errors.push("Missing parameter 2: Lookup range 'NYC_Film_Permits!A:A'");
-                if (!upperInput.includes("D:D")) errors.push("Missing parameter 3: Return range 'NYC_Film_Permits!D:D'");
+                const openParen = rawVal.indexOf("(");
+                const closeParen = rawVal.lastIndexOf(")");
                 
-                // Validate Parameter 4 (if_not_found) strictly
-                const hasFoundWithoutNot = (upperInput.includes('"FOUND"') || upperInput.includes("'FOUND'") || upperInput.includes("FOUND")) && 
-                                           !upperInput.includes("NOT FOUND") && !upperInput.includes("NOT_FOUND");
-                if (hasFoundWithoutNot) {
-                    errors.push("Incorrect parameter 4 (if_not_found): Expected '\"Not Found\"', but got '\"Found\"'.");
+                if (openParen === -1 || closeParen === -1 || closeParen < openParen) {
+                    return { valid: false, msg: "⚠️ Formula Syntax Error: Missing closing or opening parenthesis in =XLOOKUP(...)." };
+                }
+
+                const argsText = rawVal.substring(openParen + 1, closeParen);
+                // Split arguments by comma respecting string literals
+                const args = argsText.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(a => a.trim());
+
+                // Parameter 1: Search key cell (A2)
+                if (!args[0] || args[0].toUpperCase() !== "A2") {
+                    errors.push(`Missing/Incorrect parameter 1 (lookup_value): Expected 'A2', but got '${args[0] || "empty"}'.`);
+                }
+
+                // Parameter 2: Lookup range (NYC_Film_Permits!A:A)
+                if (!args[1] || !args[1].toUpperCase().includes("NYC_FILM_PERMITS!A:A")) {
+                    errors.push(`Missing/Incorrect parameter 2 (lookup_array): Expected 'NYC_Film_Permits!A:A', but got '${args[1] || "empty"}'.`);
+                }
+
+                // Parameter 3: Return range (NYC_Film_Permits!D:D)
+                if (!args[2] || !args[2].toUpperCase().includes("NYC_FILM_PERMITS!D:D")) {
+                    errors.push(`Missing/Incorrect parameter 3 (return_array): Expected 'NYC_Film_Permits!D:D', but got '${args[2] || "empty"}'.`);
+                }
+
+                // Parameter 4: If not found value
+                if (!args[3]) {
+                    errors.push(`Missing parameter 4 (if_not_found): Expected '"Not Found"'.`);
+                } else {
+                    const arg4Upper = args[3].toUpperCase().replace(/['"]/g, '').trim();
+                    if (arg4Upper !== "NOT FOUND") {
+                        errors.push(`Incorrect parameter 4 (if_not_found): Expected '"Not Found"', but got '${args[3]}'.`);
+                    }
                 }
             } else {
                 if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Search key cell 'A2'");
                 if (!upperInput.includes("A:D") && !upperInput.includes("A:E")) errors.push("Missing parameter 2: Table array 'NYC_Film_Permits!A:D'");
                 if (!upperInput.includes("4")) errors.push("Missing parameter 3: Column index number '4'");
             }
+
             if (errors.length > 0) return { valid: false, msg: `⚠️ Formula Argument Error:\n• ${errors.join('\n• ')}` };
-            return { valid: true, msg: "✅ Answer Validated! Formula search key, lookup range, return range, and parameters match the official solution." };
+            return { valid: true, msg: "✅ Answer Validated! Formula search key, lookup range, return range, and 'Not Found' parameter match official solution." };
 
         case 2: // Excel Part 2: TEXTAFTER / RIGHT
             if (!upperInput.startsWith("=")) {
