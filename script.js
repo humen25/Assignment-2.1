@@ -304,18 +304,18 @@ function evaluateQuestion(id, upperInput, rawVal) {
             if (errors.length > 0) return { valid: false, msg: `⚠️ SUMIFS Parameter Error:\n• ${errors.join('\n• ')}` };
             return { valid: true, msg: "✅ Answer Validated! All SUMIFS ranges and criteria match the official audit solution." };
 
-        case 4: // Excel Part 4: Regression Interpretation
-            const hasAdv = upperInput.includes("ADVERTISING");
-            const hasAdvSig = upperInput.includes("SIGNIFICANT") && !upperInput.includes("NOT SIGNIFICANT");
+        case 4: // Excel Part 4: Regression Interpretation (Flexible Conceptual Match)
+            const hasAdv = upperInput.includes("ADVERTISING") || upperInput.includes("ADV");
+            const hasAdvSig = upperInput.includes("SIGNIFICANT") || upperInput.includes("0.002") || upperInput.includes("< 0.05") || upperInput.includes("<0.05");
             if (!hasAdv || !hasAdvSig) {
                 errors.push("Missing finding: Advertising expenditure must be identified as statistically significant (P-value 0.002 < 0.05).");
             }
-            const hasSqFt = upperInput.includes("SQUARE") || upperInput.includes("FOOTAGE");
-            const hasSqFtInsig = upperInput.includes("NOT SIGNIFICANT") || upperInput.includes("INSIGNIFICANT") || upperInput.includes("0.42");
+            const hasSqFt = upperInput.includes("SQUARE") || upperInput.includes("FOOTAGE") || upperInput.includes("0.42");
+            const hasSqFtInsig = upperInput.includes("NOT") || upperInput.includes("INSIGNIFICANT") || upperInput.includes("0.42") || upperInput.includes("> 0.05") || upperInput.includes(">0.05");
             if (!hasSqFt || !hasSqFtInsig) {
                 errors.push("Missing finding: Square Footage must be identified as NOT statistically significant (P-value 0.42 > 0.05).");
             }
-            const hasR2 = upperInput.includes("84") || upperInput.includes("0.84");
+            const hasR2 = upperInput.includes("84") || upperInput.includes("0.84") || upperInput.includes("R-SQUARE") || upperInput.includes("R2") || upperInput.includes("VARIANCE");
             if (!hasR2) {
                 errors.push("Missing measure: R-squared value of 0.84 (84% revenue variance explained) must be specified.");
             }
