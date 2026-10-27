@@ -17,11 +17,7 @@ const questionBank = [
                 "4. If Not Found Value (\"Not Found\"): Prevents #N/A errors and flags unverified records for audit."
             ],
             examTip: "XLOOKUP is preferred over VLOOKUP because it does not break when columns are reordered and defaults to exact matching."
-        },
-        requiredTokensOptions: [
-            ["XLOOKUP", "A2", "A:A", "D:D"],
-            ["VLOOKUP", "A2", "4"]
-        ]
+        }
     },
     {
         id: 2,
@@ -38,11 +34,7 @@ const questionBank = [
                 "2. Legacy Method (=RIGHT(...)): Uses FIND(\"_\", A2) to locate character position, subtracts from total length, and extracts substring."
             ],
             examTip: "If TEXTAFTER is unavailable in older Excel versions, use the LEN + FIND combination."
-        },
-        requiredTokensOptions: [
-            ["TEXTAFTER", "A2", "_"],
-            ["RIGHT", "A2", "LEN", "FIND"]
-        ]
+        }
     },
     {
         id: 3,
@@ -60,10 +52,7 @@ const questionBank = [
                 "3. Criteria_Range2 & Criteria2 (Column D, \"Chicago\"): Restricts sum to the Chicago branch."
             ],
             examTip: "In SUMIFS, the sum range comes FIRST (unlike SUMIF where the sum range comes last)."
-        },
-        requiredTokensOptions: [
-            ["SUMIFS", "E:E", "C:C", "401", "D:D", "CHICAGO"]
-        ]
+        }
     },
     {
         id: 4,
@@ -81,12 +70,7 @@ const questionBank = [
                 "3. Goodness of Fit (R-Squared): R^2 = 0.84 indicates 84% of total sales variation is explained by the independent variables."
             ],
             examTip: "Always compare P-values to 0.05. If P-value < 0.05, reject the null hypothesis."
-        },
-        // Strict Validation: Requires Advertising + Significant + R-squared value (84 or 0.84)
-        requiredTokensOptions: [
-            ["ADVERTISING", "SIGNIFICANT", "84"],
-            ["ADVERTISING", "SIGNIFICANT", "0.84"]
-        ]
+        }
     },
     {
         id: 5,
@@ -104,11 +88,7 @@ const questionBank = [
                 "3. Subquery (IN): Filters phone numbers to callers making short calls (< 60s) on the same date."
             ],
             examTip: "Verify foreign keys match across tables: p.id = b.person_id and b.account_number = atm.account_number."
-        },
-        // Strict Validation: Requires main SELECT query, JOINs across tables, and duration limit
-        requiredTokensOptions: [
-            ["SELECT", "NAME", "FROM", "PEOPLE", "JOIN", "BANK_ACCOUNTS", "ATM_TRANSACTIONS", "LEGGETT STREET", "60"]
-        ]
+        }
     },
     {
         id: 6,
@@ -126,11 +106,7 @@ const questionBank = [
                 "3. HAVING SUM(Total) > 45: Filters aggregated sums (WHERE cannot filter aggregate functions like SUM)."
             ],
             examTip: "Use WHERE to filter individual rows BEFORE grouping; use HAVING to filter aggregated results AFTER grouping."
-        },
-        // Strict Validation: Requires ORDER BY clause
-        requiredTokensOptions: [
-            ["SELECT", "CUSTOMERID", "SUM(TOTAL)", "FROM", "INVOICE", "GROUP BY", "HAVING", "45", "ORDER BY"]
-        ]
+        }
     },
     {
         id: 7,
@@ -148,10 +124,7 @@ const questionBank = [
                 "3. SUM(Amount) > 2500: Identifies instances where total daily spend exceeds the authorization threshold."
             ],
             examTip: "Always include all non-aggregated SELECT columns inside the GROUP BY clause."
-        },
-        requiredTokensOptions: [
-            ["SELECT", "CARDHOLDER_ID", "VENDOR_NAME", "TRANSACTION_DATE", "FROM", "PCARD_TRANSACTIONS", "GROUP BY", "HAVING", "2500"]
-        ]
+        }
     }
 ];
 
@@ -267,7 +240,151 @@ window.toggleContext = function(id) {
     }
 };
 
-// Strict Validation Function
+// ==========================================
+// GRANULAR PEDAGOGICAL EVALUATOR FUNCTIONS
+// ==========================================
+
+function evaluateQuestion(id, upperInput, rawVal) {
+    let errors = [];
+
+    switch (id) {
+        case 1: // Excel Part 1: XLOOKUP / VLOOKUP
+            if (!upperInput.startsWith("=")) {
+                return { valid: false, msg: "⚠️ Formula Format Error: Excel formulas must start with '=' (e.g. =XLOOKUP(A2, ...))." };
+            }
+            const isXlookup = upperInput.includes("XLOOKUP");
+            const isVlookup = upperInput.includes("VLOOKUP");
+            if (!isXlookup && !isVlookup) {
+                return { valid: false, msg: "⚠️ Function Error: Missing Excel lookup function. Expected =XLOOKUP(...) or =VLOOKUP(...)." };
+            }
+            if (isXlookup) {
+                if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Search key cell 'A2'");
+                if (!upperInput.includes("A:A")) errors.push("Missing parameter 2: Lookup range 'NYC_Film_Permits!A:A'");
+                if (!upperInput.includes("D:D")) errors.push("Missing parameter 3: Return range 'NYC_Film_Permits!D:D'");
+            } else {
+                if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Search key cell 'A2'");
+                if (!upperInput.includes("A:D") && !upperInput.includes("A:E")) errors.push("Missing parameter 2: Table array 'NYC_Film_Permits!A:D'");
+                if (!upperInput.includes("4")) errors.push("Missing parameter 3: Column index number '4'");
+            }
+            if (errors.length > 0) return { valid: false, msg: `⚠️ Formula Argument Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! Formula search key, lookup range, and return range match the official solution." };
+
+        case 2: // Excel Part 2: TEXTAFTER / RIGHT
+            if (!upperInput.startsWith("=")) {
+                return { valid: false, msg: "⚠️ Formula Format Error: Excel formulas must start with '=' (e.g. =TEXTAFTER(A2, \"_\"))." };
+            }
+            const isTextafter = upperInput.includes("TEXTAFTER");
+            const isRight = upperInput.includes("RIGHT");
+            if (!isTextafter && !isRight) {
+                return { valid: false, msg: "⚠️ Function Error: Missing text parsing function. Expected =TEXTAFTER(...) or =RIGHT(...)." };
+            }
+            if (isTextafter) {
+                if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Target text cell 'A2'");
+                if (!upperInput.includes("_")) errors.push("Missing parameter 2: Delimiter string \"_\"");
+            } else {
+                if (!upperInput.includes("A2")) errors.push("Missing parameter 1: Target text cell 'A2'");
+                if (!upperInput.includes("LEN")) errors.push("Missing parameter: LEN() function for length calculation");
+                if (!upperInput.includes("FIND") && !upperInput.includes("SEARCH")) errors.push("Missing parameter: FIND(\"_\", A2) to locate underscore position");
+                if (!upperInput.includes("_")) errors.push("Missing delimiter string \"_\"");
+            }
+            if (errors.length > 0) return { valid: false, msg: `⚠️ Text Parsing Formula Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! Text parsing arguments match the official solution." };
+
+        case 3: // Excel Part 3: SUMIFS
+            if (!upperInput.startsWith("=")) {
+                return { valid: false, msg: "⚠️ Formula Format Error: Excel formulas must start with '=' (e.g. =SUMIFS(...))." };
+            }
+            if (!upperInput.includes("SUMIFS")) {
+                return { valid: false, msg: "⚠️ Function Error: Expected =SUMIFS(...) function for multi-criteria summation." };
+            }
+            if (!upperInput.includes("E:E")) errors.push("Missing parameter 1: Sum range 'Payroll2016!E:E' (Gross Pay column)");
+            if (!upperInput.includes("C:C") || !upperInput.includes("401")) errors.push("Missing criteria pair 1: JobCode column 'C:C' and value 401");
+            if (!upperInput.includes("D:D") || !upperInput.includes("CHICAGO")) errors.push("Missing criteria pair 2: Location column 'D:D' and value \"Chicago\"");
+
+            if (errors.length > 0) return { valid: false, msg: `⚠️ SUMIFS Parameter Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! All SUMIFS ranges and criteria match the official audit solution." };
+
+        case 4: // Excel Part 4: Regression Interpretation
+            const hasAdv = upperInput.includes("ADVERTISING");
+            const hasAdvSig = upperInput.includes("SIGNIFICANT") && !upperInput.includes("NOT SIGNIFICANT");
+            if (!hasAdv || !hasAdvSig) {
+                errors.push("Missing finding: Advertising expenditure must be identified as statistically significant (P-value 0.002 < 0.05).");
+            }
+            const hasSqFt = upperInput.includes("SQUARE") || upperInput.includes("FOOTAGE");
+            const hasSqFtInsig = upperInput.includes("NOT SIGNIFICANT") || upperInput.includes("INSIGNIFICANT") || upperInput.includes("0.42");
+            if (!hasSqFt || !hasSqFtInsig) {
+                errors.push("Missing finding: Square Footage must be identified as NOT statistically significant (P-value 0.42 > 0.05).");
+            }
+            const hasR2 = upperInput.includes("84") || upperInput.includes("0.84");
+            if (!hasR2) {
+                errors.push("Missing measure: R-squared value of 0.84 (84% revenue variance explained) must be specified.");
+            }
+            if (errors.length > 0) return { valid: false, msg: `⚠️ Regression Analysis Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! All statistical significance findings and R-squared values match." };
+
+        case 5: // SQL Part 1: CS50 Fiftyville Join
+            if (!upperInput.includes("SELECT") || (!upperInput.includes("P.NAME") && !upperInput.includes("NAME"))) {
+                errors.push("Missing main SELECT clause: Must start with 'SELECT p.name' (or 'SELECT name')");
+            }
+            if (!upperInput.includes("FROM PEOPLE") && !upperInput.includes("PEOPLE P") && !upperInput.includes("FROM  PEOPLE")) {
+                errors.push("Missing main FROM clause: Must query the 'people' table");
+            }
+            if (!upperInput.includes("JOIN BANK_ACCOUNTS") && !upperInput.includes("BANK_ACCOUNTS")) {
+                errors.push("Missing JOIN clause: Must join 'bank_accounts' on person_id");
+            }
+            if (!upperInput.includes("JOIN ATM_TRANSACTIONS") && !upperInput.includes("ATM_TRANSACTIONS")) {
+                errors.push("Missing JOIN clause: Must join 'atm_transactions' on account_number");
+            }
+            if (!upperInput.includes("LEGGETT STREET")) {
+                errors.push("Missing location filter: Must filter atm_location = 'Leggett Street'");
+            }
+            if (!upperInput.includes("PHONE_CALLS") || !upperInput.includes("60")) {
+                errors.push("Missing phone calls subquery: Must filter phone callers with call duration < 60 seconds");
+            }
+            if (errors.length > 0) return { valid: false, msg: `⚠️ SQL Query Clause Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! Relational JOIN chain and subquery filters match the forensic solution." };
+
+        case 6: // SQL Part 2: PwC Chinook Aggregate Customer Revenue
+            if (!upperInput.includes("SELECT") || !upperInput.includes("CUSTOMERID") || !upperInput.includes("SUM(")) {
+                errors.push("Missing SELECT columns: Must SELECT CustomerId and SUM(Total)");
+            }
+            if (!upperInput.includes("FROM INVOICE") && !upperInput.includes("FROM  INVOICE")) {
+                errors.push("Missing FROM clause: Must specify 'FROM Invoice'");
+            }
+            if (!upperInput.includes("GROUP BY") || !upperInput.includes("CUSTOMERID")) {
+                errors.push("Missing GROUP BY clause: Must include 'GROUP BY CustomerId'");
+            }
+            if (!upperInput.includes("HAVING") || !upperInput.includes("45")) {
+                errors.push("Missing HAVING filter: Must include 'HAVING SUM(Total) > 45'");
+            }
+            if (!upperInput.includes("ORDER BY")) {
+                errors.push("Missing ORDER BY clause: Must include 'ORDER BY TotalSpent DESC' (or ORDER BY SUM(Total) DESC)");
+            }
+            if (errors.length > 0) return { valid: false, msg: `⚠️ SQL Query Clause Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! Grouping, aggregate HAVING filter, and sorting clauses match." };
+
+        case 7: // SQL Part 2: P-Card Split Purchasing Audit
+            if (!upperInput.includes("SELECT") || !upperInput.includes("CARDHOLDER_ID") || !upperInput.includes("VENDOR_NAME")) {
+                errors.push("Missing SELECT columns: Must SELECT Cardholder_ID, Vendor_Name, Transaction_Date, COUNT(*), SUM(Amount)");
+            }
+            if (!upperInput.includes("FROM PCARD_TRANSACTIONS") && !upperInput.includes("FROM  PCARD_TRANSACTIONS")) {
+                errors.push("Missing FROM clause: Must specify 'FROM PCard_Transactions'");
+            }
+            if (!upperInput.includes("GROUP BY") || !upperInput.includes("CARDHOLDER_ID") || !upperInput.includes("VENDOR_NAME")) {
+                errors.push("Missing or incomplete GROUP BY: Must group by Cardholder_ID, Vendor_Name, and Transaction_Date");
+            }
+            if (!upperInput.includes("HAVING") || !upperInput.includes("2500")) {
+                errors.push("Missing HAVING thresholds: Must filter HAVING COUNT(*) > 1 AND SUM(Amount) > 2500");
+            }
+            if (errors.length > 0) return { valid: false, msg: `⚠️ P-Card Audit Query Error:\n• ${errors.join('\n• ')}` };
+            return { valid: true, msg: "✅ Answer Validated! Split-transaction fraud detection query matches official control solution." };
+
+        default:
+            return { valid: false, msg: "⚠️ Unknown question ID." };
+    }
+}
+
+// Validation Handler
 window.verifyAnswer = function(id) {
     const inputEl = document.getElementById(`input-${id}`);
     const expBox = document.getElementById(`explanation-${id}`);
@@ -281,55 +398,21 @@ window.verifyAnswer = function(id) {
         return;
     }
 
-    const q = questionBank.find(item => item.id === id);
     const upperInput = rawVal.toUpperCase();
-    let isValid = false;
-    let missingTokens = [];
-
-    // Check Excel structure start
-    if (q.type === "excel" && q.category !== "excel-regression") {
-        if (!upperInput.startsWith("=")) {
-            alert("⚠️ An Excel formula must start with '=' (e.g. =XLOOKUP(A2, ...)).");
-            delete userProgress[id];
-            localStorage.setItem('exam_progress', JSON.stringify(userProgress));
-            updateProgressCounter();
-            if (expBox) expBox.style.display = 'block';
-            return;
-        }
-    }
-
-    // Check tokens
-    if (q.requiredTokensOptions) {
-        for (let optionSet of q.requiredTokensOptions) {
-            let allMatched = true;
-            let missingInSet = [];
-            for (let token of optionSet) {
-                if (!upperInput.includes(token)) {
-                    allMatched = false;
-                    missingInSet.push(token);
-                }
-            }
-            if (allMatched) {
-                isValid = true;
-                break;
-            } else {
-                missingTokens = missingInSet;
-            }
-        }
-    }
+    const evalResult = evaluateQuestion(id, upperInput, rawVal);
 
     if (expBox) expBox.style.display = 'block';
 
-    if (isValid) {
+    if (evalResult.valid) {
         userProgress[id] = true;
         localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
-        alert("✅ Answer Validated! Full solution structure and parameters confirmed.");
+        alert(evalResult.msg);
     } else {
         delete userProgress[id];
         localStorage.setItem('exam_progress', JSON.stringify(userProgress));
         updateProgressCounter();
-        alert(`⚠️ Incomplete Solution. Missing required solution parameters/clauses: ${missingTokens.join(", ")}.`);
+        alert(evalResult.msg);
     }
 };
 
